@@ -1,0 +1,24 @@
+{
+  "name": "Compilatore Verbali",
+  "short_name": "Verbali",
+  "description": "Applicazione per la redazione e gestione dei verbali di polizia giudiziaria.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0b1c4a",
+  "theme_color": "#f7f7f4",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "./emblem.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./emblem.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

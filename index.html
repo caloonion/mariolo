@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="it" style="--previewScale: 1;">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0d2347">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Compilatore Verbali">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="apple-touch-icon" href="./emblem.png">
+  <title>Compilatore Verbali</title>
+
+  <!-- Foglio di Stile Esterno -->
+  <link rel="stylesheet" href="style.css">
+
+  <!-- Librerie esterne affidabili da CDN per esportazione Word -->
+  <script src="https://cdn.jsdelivr.net/npm/html-docx-js@0.3.1/dist/html-docx.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+</head>
+<body class="mobile-pane-form">
+
+  <!-- ===== LOCK SCREEN ===== -->
+  <div id="lockScreen" style="display: flex;">
+    <img class="lock-logo" src="./emblem.png" alt="">
+    <div class="lock-title">Compilatore Verbali</div>
+    <div class="lock-sub">Inserisci il PIN per accedere</div>
+    <div class="pin-dots" id="pinDots">
+      <div class="pin-dot" id="dot0"></div>
+      <div class="pin-dot" id="dot1"></div>
+      <div class="pin-dot" id="dot2"></div>
+      <div class="pin-dot" id="dot3"></div>
+    </div>
+    <div class="keypad">
+      <button class="kbtn" data-k="1">1</button>
+      <button class="kbtn" data-k="2">2</button>
+      <button class="kbtn" data-k="3">3</button>
+      <button class="kbtn" data-k="4">4</button>
+      <button class="kbtn" data-k="5">5</button>
+      <button class="kbtn" data-k="6">6</button>
+      <button class="kbtn" data-k="7">7</button>
+      <button class="kbtn" data-k="8">8</button>
+      <button class="kbtn" data-k="9">9</button>
+      <button class="kbtn empty"></button>
+      <button class="kbtn" data-k="0">0</button>
+      <button class="kbtn del" id="pinDel">⌫</button>
+    </div>
+  </div>
+
+  <!-- ===== HOME SCREEN ===== -->
+  <div id="homeScreen" style="display: none;">
+    <button type="button" id="btnHomeLogout" style="position:absolute; top:calc(env(safe-area-inset-top) + 12px); right:16px; background:rgba(255,255,255,.12); color:#fff; border:1px solid rgba(255,255,255,.2); padding:6px 12px; border-radius:10px; font-size:12px; cursor:pointer;">🔒 Esci</button>
+    <img class="home-logo" src="./emblem.png" alt="">
+    <div class="home-title">Compilatore Verbali</div>
+    <div class="home-sub">Seleziona la pratica da redigere</div>
+    <div class="home-section-label">Pratiche disponibili</div>
+
+    <button type="button" class="home-card home-card-ready" id="homeCard75">
+      <div class="hc-label">Pronto all'uso</div>
+      <div class="hc-title">Contestazione ex Art. 75 D.P.R. 309/90</div>
+      <div class="hc-desc">Verbale di contestazione, perquisizione, narcotest, etichetta reperto</div>
+    </button>
+
+    <button type="button" class="home-card home-card-ready" id="homeCard161">
+      <div class="hc-label">Pronto all'uso</div>
+      <div class="hc-title">Elezione di Domicilio ex Art. 161 c.p.p.</div>
+      <div class="hc-desc">Verbale di identificazione, dichiarazione o elezione di domicilio ed informazione sul diritto di difesa</div>
+    </button>
+  </div>
+
+  <div id="homeToast"></div>
+
+  <!-- ===== NAVIGAZIONE MOBILE ===== -->
+  <div class="mobileNav" aria-label="Navigazione mobile" style="display: none;">
+    <button type="button" class="mobilePaneBtn active" data-pane="form" aria-pressed="true">Compila</button>
+    <button type="button" class="mobilePaneBtn" data-pane="preview" aria-pressed="false">Anteprima</button>
+  </div>
+
+  <!-- ===== APPLICAZIONE PRINCIPALE ===== -->
+  <div class="wrap" style="display: none;">
+    
+    <!-- PANNELLO DI SINISTRA (MODULO) -->
+    <div class="left">
+      <div class="topbar">
+        <button type="button" class="btn-home" id="btnBackHome" title="Home" style="padding-left:0;">← Home</button>
+        <h2 style="margin:0; flex:1; text-align:center;" id="praticaTitle">Pratica</h2>
+        <button type="button" class="btn-home" id="btnLogout" title="Esci" style="padding-right:0;">🔒 Esci</button>
+      </div>
+      <div class="pill">Compili il modulo e controlli l'anteprima editabile prima di esportare.</div>
+      
+      <div id="operatorDisplay" style="margin-top:10px; padding:8px 12px; background:#e0e7ff; border:1px solid #c7d2fe; border-radius:8px; font-size:13px; font-weight:bold; color:#1e3a8a; display:none;">
+        Operatore attivo: <span id="opName"></span>
+      </div>
+
+      <!-- BLOCCO DATI GENERALI IN COMUNE -->
+      <div class="hr"></div>
+      <button type="button" class="sectionHead" data-body="sec-generali-body">
+        <span class="sh-title">Dati Generali & Soggetto</span>
+        <span class="sarrow">▼</span>
+      </button>
+      <div id="sec-generali-body">
+        <div class="row">
+          <h3>Dati intestazione</h3>
+          <input id="legione" placeholder="es. LEGIONE CARABINIERI LIGURIA" value="">
+          <div style="height:8px"></div>
+          <input id="comando" placeholder="es. Stazione Carabinieri di Stella" value="">
+          <div style="height:8px"></div>
+          <input id="squadra" placeholder="Indirizzo, tel, pec..." value="">
+        </div>
+
+        <div class="hr"></div>
+
+        <div class="row">
+          <h3 id="soggettoLabelTitle">Trasgressore / Indagato</h3>
+          <div class="grid2">
+            <input id="s1_cognome" placeholder="COGNOME" value="">
+            <input id="s1_nome" placeholder="Nome" value="">
+          </div>
+          <div style="height:8px"></div>
+
+          <select id="s1_sesso">
+            <option value="" selected>--- Seleziona Sesso ---</option>
+            <option value="M">Sesso: Maschile</option>
+            <option value="F">Sesso: Femminile</option>
+          </select>
+          <div style="height:8px"></div>
+
+          <div class="grid2">
+            <input id="s1_nato_a" placeholder="nato/a a (Comune + Provincia)" value="">
+            <input id="s1_nato_il" placeholder="il (gg/mm/aaaa)" value="" inputmode="numeric">
+          </div>
+          <div style="height:8px"></div>
+
+          <div class="grid3">
+            <input id="s1_res_comune" placeholder="residente a (Comune + Prov.)" value="">
+            <input id="s1_res_via" placeholder="via/viale/piazza" value="">
+            <input id="s1_res_civ" placeholder="nr./civico" value="">
+          </div>
+          <div style="height:8px"></div>
+
+          <div class="grid3">
+            <select id="s1_doc_tipo">
+              <option value="" selected>--- Seleziona Documento ---</option>
+              <option value="carta di identità">Carta di identità</option>
+              <option value="carta di identità elettronica">Carta di identità elettronica</option>
+              <option value="patente di guida">Patente di guida</option>
+              <option value="passaporto">Passaporto</option>
+              <option value="permesso di soggiorno">Permesso di soggiorno</option>
+              <option value="fotosegnalamento">Fotosegnalamento</option>
+              <option value="altro">Altro (scrivi tu)</option>
+            </select>
+            <input id="s1_doc_altro" placeholder="se Altro: specifica..." style="display:none">
+            <input id="s1_doc_num" placeholder="nr. documento" value="">
+          </div>
+
+          <div style="height:8px"></div>
+          <div class="grid2">
+            <input id="s1_doc_rilascio_il" placeholder="rilasciato il (gg/mm/aaaa)" value="" inputmode="numeric">
+            <input id="s1_doc_rilascio_da" placeholder="da (Comune/Autorità)" value="">
+          </div>
+
+          <div style="height:8px"></div>
+          <input id="s1_tel" placeholder="Tel." value="">
+
+          <div id="s2_wrap_75">
+            <div class="inlineCheck" style="margin-top:12px">
+              <input type="checkbox" id="s2_enable">
+              <b>Aggiungi più trasgressori</b>
+            </div>
+
+            <div id="s2_box" class="mutedBox" style="display:none">
+              <h3 style="margin:0 0 8px">Trasgressore 2</h3>
+              <div class="grid2">
+                <input id="s2_cognome" placeholder="COGNOME">
+                <input id="s2_nome" placeholder="Nome">
+              </div>
+              <div style="height:8px"></div>
+              <select id="s2_sesso">
+                <option value="" selected>--- Seleziona Sesso ---</option>
+                <option value="M">Sesso: Maschile</option>
+                <option value="F">Sesso: Femminile</option>
+              </select>
+              <div style="height:8px"></div>
+              <div class="grid2">
+                <input id="s2_nato_a" placeholder="nato/a a (Comune + Prov.)">
+                <input id="s2_nato_il" placeholder="il (gg/mm/aaaa)" inputmode="numeric">
+              </div>
+              <div style="height:8px"></div>
+              <div class="grid3">
+                <input id="s2_res_comune" placeholder="residente a (Comune + Prov.)">
+                <input id="s2_res_via" placeholder="via/viale/piazza">
+                <input id="s2_res_civ" placeholder="nr./civico">
+              </div>
+              <div style="height:8px"></div>
+              <div class="grid3">
+                <select id="s2_doc_tipo">
+                  <option value="" selected>--- Seleziona Documento ---</option>
+                  <option value="carta di identità">Carta di identità</option>
+                  <option value="carta di identità elettronica">Carta di identità elettronica</option>
+                  <option value="patente di guida">Patente di guida</option>
+                  <option value="passaporto">Passaporto</option>
+                  <option value="permesso di soggiorno">Permesso di soggiorno</option>
+                  <option value="fotosegnalamento">Fotosegnalamento</option>
+                  <option value="altro">Altro (scrivi tu)</option>
+                </select>
+                <input id="s2_doc_altro" placeholder="se Altro: specifica..." style="display:none">
+                <input id="s2_doc_num" placeholder="nr. documento">
+              </div>
+              <div style="height:8px"></div>
+              <div class="grid2">
+                <input id="s2_doc_rilascio_il" placeholder="rilasciato il (gg/mm/aaaa)" inputmode="numeric">
+                <input id="s2_doc_rilascio_da" placeholder="da (Comune/Autorità)">
+              </div>
+              <div style="height:8px"></div>
+              <input id="s2_tel" placeholder="Tel.">
+            </div>
+          </div>
+        </div>
+
+        <div class="hr"></div>
+
+        <div class="row">
+          <h3>Dati verbale</h3>
+
+          <div class="inlineCheck">
+            <input type="checkbox" id="autoDataOra">
+            <span>Usa data/ora attuali</span>
+          </div>
+
+          <div class="grid2">
+            <input id="dataVerbale" placeholder="gg/mm/aaaa (es. 16/12/2025)" inputmode="numeric">
+            <input id="oraVerbale" placeholder="hh:mm (es. 15:40)">
+          </div>
+
+          <div class="inlineCheck" style="margin-top:10px">
+            <input type="checkbox" id="verbaleInUffici">
+            <span><b>Verbale redatto presso gli Uffici del Comando in intestazione</b></span>
+          </div>
+
+          <div id="verbaleLuogoBox" style="display: block;">
+            <div style="height:8px"></div>
+            <div class="grid2">
+              <input id="verbale_via" placeholder="via/viale/piazza" value="">
+              <input id="verbale_comune" placeholder="Comune" value="">
+            </div>
+          </div>
+        </div>
+
+        <div class="row">
+          <h3>Operanti</h3>
+          <div id="operantiBox" style="display:grid;gap:6px"></div>
+          <button type="button" id="btn_add_operante">+ Aggiungi operante</button>
+        </div>
+      </div><!-- /sec-generali-body -->
+
+      <!-- BLOCCO SPECIFICO PER ART 75 -->
+      <div id="container_art75">
+        <div class="hr"></div>
+        <button type="button" class="sectionHead" data-body="sec75-body">
+          <span class="sh-title">Verbale di contestazione ex Art. 75 D.P.R. 309/1990</span>
+          <span class="sarrow">▼</span>
+        </button>
+        <div id="sec75-body">
+          <div class="row">
+            <h3>Dati intervento</h3>
+
+            <div class="inlineCheck">
+              <input type="checkbox" id="interventoUgualeVerbale">
+              <span>Uguale al luogo di stesura del verbale</span>
+            </div>
+
+            <div id="interventoLuogoBox" style="display:block">
+              <div class="grid2">
+                <input id="intervento_luogo" placeholder="Luogo (Comune/Zona)">
+                <input id="intervento_ora" placeholder="Ora (hh:mm)">
+              </div>
+            </div>
+          </div>
+
+          <div class="row">
+            <h3>Rinvenimento</h3>
+            <select id="modalita">
+              <option value="" selected>--- Seleziona Modalità ---</option>
+              <option value="consegna spontanea">Consegna spontanea</option>
+              <option value="perquisizione personale">Perquisizione personale</option>
+            </select>
+
+            <h3 style="margin-top:12px">Descrizione sostanza (semi-guidata)</h3>
+            <select id="tipoSostanza">
+              <option value="" selected>--- Seleziona Sostanza ---</option>
+              <option value="marijuana">Marijuana</option>
+              <option value="hashish">Hashish</option>
+              <option value="cocaina">Cocaina</option>
+              <option value="eroina">Eroina</option>
+              <option value="altro">Altro (scrivi tu)</option>
+            </select>
+            <div id="altroWrap" style="margin-top:8px;display:none">
+              <input id="tipoAltro" placeholder="es. MDMA / ketamina / LSD...">
+            </div>
+
+            <div style="height:8px"></div>
+            <input id="pesoGrammi" placeholder="es. 1,00" value="">
+
+            <div style="height:10px"></div>
+            <button type="button" id="btn_add_sostanza">+ Aggiungi altra sostanza</button>
+            <div id="sostanzeBox" style="margin-top:10px;display:grid;gap:10px"></div>
+          </div>
+
+          <div class="row">
+            <h3>Deposito presso</h3>
+            <input id="depositoPresso" placeholder="es. Comando Stazione Carabinieri..." value="">
+            <div style="height:8px"></div>
+
+            <div class="mutedBox">
+              <b>Modalità deposito</b>
+              <div class="radioRow" style="margin-top:8px">
+                <label class="inlineCheck"><input type="radio" name="deposito_mode" id="dep_narcotest" checked=""> Narcotest</label>
+                <label class="inlineCheck"><input type="radio" name="deposito_mode" id="dep_laboratorio"> Trasmissione a Laboratorio</label>
+              </div>
+            </div>
+          </div>
+
+          <div class="row">
+            <h3>Veicolo a disposizione</h3>
+            <div class="mutedBox">
+              <div class="radioRow">
+                <label class="inlineCheck"><input type="radio" name="veh_mode" id="veh_no" checked=""> Non disponibilità veicolo</label>
+                <label class="inlineCheck"><input type="radio" name="veh_mode" id="veh_yes"> Disponibilità veicolo</label>
+              </div>
+
+              <div id="veh_fields" style="display:none;margin-top:10px">
+                <div class="grid3">
+                  <input id="veh_marca" placeholder="Marca">
+                  <input id="veh_modello" placeholder="Modello">
+                  <input id="veh_targa" placeholder="Targa">
+                </div>
+
+                <div class="inlineCheck" style="margin-top:10px">
+                  <input type="checkbox" id="veh_owner_same" checked="">
+                  <span>Proprietario = trasgressore</span>
+                </div>
+
+                <div id="veh_owner_other_box" style="display:none">
+                  <textarea id="veh_owner_other" placeholder="Dati proprietario se diverso (es. COGNOME Nome, nato a..., ecc.)"></textarea>
+                </div>
+
+                <div class="inlineCheck" style="margin-top:10px">
+                  <input type="checkbox" id="ritiro_patente">
+                  <b>Ritiro patente di guida</b>
+                </div>
+
+                <div id="ritiro_patente_box" style="display:none">
+                  <div class="grid3">
+                    <input id="pat_nr" placeholder="nr. patente">
+                    <input id="pat_ril_il" placeholder="rilasciata in data (gg/mm/aaaa)" inputmode="numeric">
+                    <input id="pat_ril_da" placeholder="da (Autorità)">
+                  </div>
+                </div>
+
+                <div class="inlineCheck" style="margin-top:10px">
+                  <input type="checkbox" id="invito_patente">
+                  <span>Invito a presentare la patente (non al seguito)</span>
+                </div>
+
+                <div class="inlineCheck" style="margin-top:6px">
+                  <input type="checkbox" id="verbale_180">
+                  <span>Richiamo art. 180 CdS (separato verbale)</span>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <div class="row">
+            <h3>Stranieri</h3>
+            <div class="mutedBox">
+                <div class="inlineCheck" style="margin-top:6px">
+                  <input type="checkbox" id="extracomunitario">
+                  <span>Straniero extracomunitario (comma 8°)</span>
+                </div>
+            </div>
+          </div>
+          
+          <div class="row">
+            <h3>Dichiarazioni della parte</h3>
+
+            <select id="Dichiarazioni">
+              <option value="" selected>--- Seleziona Dichiarazione ---</option>
+              <option value="nulla da dichiarare.-------//">Nulla da dichiarare</option>
+              <option value="dichiaro di fare uso sporadico di sostanze stupefacenti, precisando che tale uso è destinato esclusivamente a fini personali.-------//">Uso personale</option>
+              <option value="altro">Altro (scrivi tu)</option>
+            </select>
+
+            <div id="Dichiarazioni_altro_wrap" style="margin-top:8px;display:none">
+              <textarea id="Dichiarazioni_altro" placeholder="Scrivi qui ciò che vuoi far inserire a verbale..."></textarea>
+            </div>
+          </div>
+
+          <div class="row">
+            <h3>Note (opzionali)</h3>
+            <textarea id="noteExtra" placeholder="Note brevi (opzionale)"></textarea>
+            <div class="small" style="margin-top:6px">Le note vengono inserite prima della chiusura (“Il presente verbale…”).</div>
+          </div>
+        </div><!-- /sec75-body -->
+
+        <div class="hr"></div>
+        <button type="button" class="sectionHead" data-body="sec-perq-body">
+          <span class="sh-title">Verbale di perquisizione</span>
+          <span class="sarrow">▼</span>
+        </button>
+        <div id="sec-perq-body">
+          <div class="row">
+            <div class="inlineCheck">
+              <input type="checkbox" id="perq_enable">
+              <b>Redigi anche il verbale di perquisizione</b>
+            </div>
+
+            <div id="perq_box" class="mutedBox" style="display: none; margin-top: 10px;">
+              <label><b>Dati del verbale</b></label>
+              <div class="inlineCheck">
+                <input type="checkbox" id="perq_dati_auto" checked="">
+                <span>Automatico</span>
+              </div>
+              <div class="grid2" style="margin-top:6px">
+                <input id="perq_info_ora" readonly="" style="background:#f3f3f3" placeholder="orario di stesura">
+                <input id="perq_info_luogo" readonly="" style="background:#f3f3f3" placeholder="luogo">
+              </div>
+
+              <div style="height:8px"></div>
+              <label><b>Tipo</b></label>
+              <div class="radioRow">
+                <label class="inlineCheck"><input type="checkbox" id="perq_tipo_pers" checked=""> Personale</label>
+                <label class="inlineCheck"><input type="checkbox" id="perq_tipo_veic"> Veicolare</label>
+              </div>
+
+              <div id="perq_veic_box" style="display:none;margin-top:8px">
+                <label><b>Veicolo perquisito</b></label>
+                <div class="inlineCheck" style="margin-top:4px">
+                  <input type="checkbox" id="perq_veic_auto">
+                  <span>Importa dati dal verbale art. 75</span>
+                </div>
+                <div id="perq_veic_manual_box" class="grid3" style="margin-top: 6px; display: block;">
+                  <input id="perq_veic_marca" placeholder="Marca">
+                  <input id="perq_veic_modello" placeholder="Modello">
+                  <input id="perq_veic_targa" placeholder="Targa">
+                </div>
+              </div>
+
+              <div style="height:8px"></div>
+              <label><b>Base giuridica</b></label>
+              <select id="perq_base">
+                <option value="" selected>--- Seleziona Base Giuridica ---</option>
+                <option value="art103">art. 103 D.P.R. 309/90 (ricerca di sostanze stupefacenti)</option>
+                <option value="art4">art. 4 L. 22.05.1975 nr. 152 (perquisizione sul posto)</option>
+              </select>
+
+              <div style="height:8px"></div>
+              <label><b>Motivo del controllo</b> (fondato motivo)</label>
+              <label class="inlineCheck"><input type="checkbox" id="perq_m1"> sorpreso senza apparente motivo / in circostanze equivoche</label>
+              <label class="inlineCheck"><input type="checkbox" id="perq_m2"> insofferente all'identificazione, atteggiamento sospetto</label>
+              <label class="inlineCheck"><input type="checkbox" id="perq_m3"> consegnava spontaneamente sostanza stupefacente</label>
+              <label class="inlineCheck"><input type="checkbox" id="perq_m4"> gravato da precedenti di polizia o di giustizia</label>
+
+              <div style="height:8px"></div>
+              <label><b>Circostanze</b> (testo libero)</label>
+              <textarea id="perq_circostanze" placeholder="Descrivi le circostanze del controllo..."></textarea>
+
+              <div style="height:8px"></div>
+              <label><b>Difensore / persona di fiducia</b></label>
+              <div class="radioRow">
+                <label class="inlineCheck"><input type="radio" name="perq_dif" id="perq_dif_no" checked=""> Non si avvale</label>
+                <label class="inlineCheck"><input type="radio" name="perq_dif" id="perq_dif_si"> Si avvale</label>
+              </div>
+              <div id="perq_dif_box" style="display:none;margin-top:6px">
+                <input id="perq_dif_nome" placeholder="Avv./Sig. nome e cognome">
+              </div>
+
+              <div style="height:8px"></div>
+              <label><b>Orario perquisizione</b> (inizio / fine)</label>
+              <div class="grid2" style="margin-top:6px">
+                <input id="perq_ora_inizio" placeholder="ora inizio (hh:mm)">
+                <input id="perq_ora_fine" placeholder="ora fine (hh:mm)">
+              </div>
+
+              <div style="height:8px"></div>
+              <label><b>Esito</b></label>
+              <div class="radioRow">
+                <label class="inlineCheck"><input type="radio" name="perq_esito" id="perq_esito_auto" checked=""> Automatico</label>
+                <label class="inlineCheck"><input type="radio" name="perq_esito" id="perq_esito_pos"> Positivo</label>
+                <label class="inlineCheck"><input type="radio" name="perq_esito" id="perq_esito_neg"> Negativo</label>
+              </div>
+              <div id="perq_dove_box" style="margin-top: 6px; display: none;">
+                <div class="small">Sostanze effettivamente rinvenute durante la perquisizione:</div>
+                <div id="perq_sost_box" style="margin-top:4px"></div>
+                <input id="perq_dove" placeholder="dove rinvenuta (es. tasca anteriore dx pantaloni)" style="margin-top:6px">
+              </div>
+
+              <div style="height:8px"></div>
+              <label><b>Dichiarazioni spontanee della parte</b> (perquisizione)</label>
+              <textarea id="perq_dich" placeholder="Se vuoto: «Nulla da dichiarare.»"></textarea>
+
+              <div style="height:8px"></div>
+              <label><b>Lingua italiana</b></label>
+              <div class="radioRow">
+                <label class="inlineCheck"><input type="radio" name="perq_lingua" id="perq_lingua_si" checked=""> Comprende l'italiano</label>
+                <label class="inlineCheck"><input type="radio" name="perq_lingua" id="perq_lingua_no"> Non comprende</label>
+              </div>
+              <div id="perq_interprete_box" style="display:none;margin-top:6px">
+                <div class="grid2">
+                  <input id="perq_interprete" placeholder="Interprete (nome)">
+                  <input id="perq_lingua_parlata" placeholder="lingua parlata">
+                </div>
+              </div>
+
+              <div id="perq_donna_box" style="display:none;margin-top:8px">
+                <label>Persona di sesso femminile: perquisizione eseguita da</label>
+                <input id="perq_eseguita_da" placeholder="operante donna (grado e nome)">
+              </div>
+            </div>
+          </div>
+        </div><!-- /sec-perq-body -->
+
+        <div class="hr"></div>
+        <button type="button" class="sectionHead" data-body="sec-narco-body">
+          <span class="sh-title">Narcotest</span>
+          <span class="sarrow">▼</span>
+        </button>
+        <div id="sec-narco-body">
+          <div class="row">
+            <div class="inlineCheck">
+              <input type="checkbox" id="narco_enable">
+              <b>Redigi anche il verbale di narcotest</b>
+            </div>
+
+            <div id="narco_box" class="mutedBox" style="display: none; margin-top: 10px;">
+              <label><b>Dati del verbale</b></label>
+              <div class="inlineCheck">
+                <input type="checkbox" id="narco_dati_auto" checked="">
+                <span>Automatico</span>
+              </div>
+              <div class="grid2" style="margin-top:6px">
+                <input id="narco_info_ora" readonly="" style="background:#f3f3f3" placeholder="orario">
+                <input id="narco_info_luogo" readonly="" style="background:#f3f3f3" placeholder="luogo">
+              </div>
+
+              <div style="height:8px"></div>
+              <label><b>Kit narcotest per campione</b></label>
+              <div id="narco_campioni_box" style="margin-top:8px;display:grid;gap:8px"></div>
+
+              <div style="height:8px"></div>
+              <label><b>Esito</b></label>
+              <div class="radioRow">
+                <label class="inlineCheck"><input type="radio" name="narco_esito" id="narco_esito_pos" checked=""> Positivo</label>
+                <label class="inlineCheck"><input type="radio" name="narco_esito" id="narco_esito_neg"> Negativo</label>
+              </div>
+              <div style="margin-top:8px">
+                <input id="narco_colore_esito" placeholder="Colore ottenuto dalla reazione (es. marrone, rosso…)">
+              </div>
+            </div>
+          </div>
+        </div><!-- /sec-narco-body -->
+
+        <div class="hr"></div>
+        <button type="button" class="sectionHead" data-body="sec-etichetta-body">
+          <span class="sh-title">Etichetta reperto</span>
+          <span class="sarrow">▼</span>
+        </button>
+        <div id="sec-etichetta-body">
+          <div class="row">
+            <div class="inlineCheck">
+              <input type="checkbox" id="etichetta_enable">
+              <b>Genera etichetta da attaccare sulla busta</b>
+            </div>
+            <div id="etichetta_box" class="mutedBox" style="display: none; margin-top: 10px;">
+              <div class="grid2">
+                <input id="etichetta_n_pratica" placeholder="N. pratica">
+                <input id="etichetta_n_registro" placeholder="N. registro">
+              </div>
+            </div>
+          </div>
+        </div><!-- /sec-etichetta-body -->
+      </div><!-- /container_art75 -->
+
+      <!-- BLOCCO SPECIFICO PER ART 161 -->
+      <div id="container_art161" style="display:none;">
+        <div class="hr"></div>
+        <button type="button" class="sectionHead" data-body="sec-161-body">
+          <span class="sh-title">Elezione di Domicilio (Art. 161 c.p.p.)</span>
+          <span class="sarrow">▼</span>
+        </button>
+        <div id="sec-161-body">
+          <div class="row">
+            <div class="mutedBox">
+              <label><b>Dati Reato</b></label>
+              <textarea id="v161_reato" placeholder="Es. art. 73 DPR 309/90 (Detenzione ai fini di spaccio...)"></textarea>
+              <input id="v161_luogo_reato" placeholder="Commesso in (Luogo e Data)" style="margin-top:8px;">
+
+              <div style="height:12px"></div>
+              <label><b>Difensore</b></label>
+              <div class="radioRow">
+                <label class="inlineCheck"><input type="radio" name="v161_difesa_tipo" id="v161_difesa_fiducia" checked=""> Di fiducia</label>
+                <label class="inlineCheck"><input type="radio" name="v161_difesa_tipo" id="v161_difesa_ufficio"> D'ufficio</label>
+              </div>
+              <div class="grid2" style="margin-top:8px">
+                <input id="v161_avv_nome" placeholder="Avv. (Nome e Cognome)">
+                <input id="v161_avv_foro" placeholder="Foro di...">
+              </div>
+              <div class="grid2" style="margin-top:8px">
+                <input id="v161_avv_studio" placeholder="Studio in (Indirizzo)">
+                <input id="v161_avv_tel" placeholder="Telefono / Cell">
+              </div>
+              <input id="v161_avv_pec" placeholder="PEC" style="margin-top:8px;">
+
+              <div style="height:12px"></div>
+              <label><b>Domicilio (Prima Scelta)</b></label>
+              <select id="v161_dom_tipo">
+                <option value="dichiara" selected>Dichiara domicilio presso...</option>
+                <option value="elegge">Elegge domicilio presso...</option>
+                <option value="non_grado">Non è in grado di dichiarare/eleggere</option>
+                <option value="rifiuta">Si rifiuta di dichiarare/eleggere</option>
+              </select>
+              <input id="v161_dom_indirizzo" placeholder="Indirizzo completo (Via, Comune, Prov)" style="margin-top:8px;">
+
+              <div id="v161_ufficio_accetta_box" style="display:none; margin-top:12px; border-top:1px dashed #ccc; padding-top:12px;">
+                <label><b>Il Difensore d'ufficio accetta la domiciliazione?</b> (art. 162 c. 4 bis)</label>
+                <div class="radioRow">
+                  <label class="inlineCheck"><input type="radio" name="v161_accetta_dom" id="v161_accetta_si" checked=""> Accetta</label>
+                  <label class="inlineCheck"><input type="radio" name="v161_accetta_dom" id="v161_accetta_no"> Non accetta</label>
+                </div>
+                
+                <div id="v161_dom2_box" style="display:none; margin-top:8px;">
+                  <label class="small">Se NON accetta, nuovo invito a dichiarare/eleggere:</label>
+                  <select id="v161_dom2_tipo" style="margin-top:4px;">
+                    <option value="dichiara" selected>Dichiara domicilio presso...</option>
+                    <option value="elegge">Elegge domicilio presso...</option>
+                    <option value="non_grado">Non è in grado di dichiarare/eleggere</option>
+                    <option value="rifiuta">Si rifiuta di dichiarare/eleggere</option>
+                  </select>
+                  <input id="v161_dom2_indirizzo" placeholder="Indirizzo completo (Via, Comune, Prov)" style="margin-top:8px;">
+                </div>
+              </div>
+
+              <div style="height:12px"></div>
+              <label><b>Reddito di Cittadinanza</b></label>
+              <div class="radioRow">
+                <label class="inlineCheck"><input type="radio" name="v161_rdc" id="v161_rdc_no" checked=""> Non beneficiario</label>
+                <label class="inlineCheck"><input type="radio" name="v161_rdc" id="v161_rdc_si"> Beneficiario</label>
+              </div>
+
+              <div style="height:12px"></div>
+              <label><b>Tribunale di Competenza</b></label>
+              <div class="grid2">
+                <input id="v161_trib_citta" placeholder="Città (es. Savona)">
+                <input id="v161_trib_indirizzo" placeholder="Indirizzo (es. Piazza Barile n. 1)">
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </div><!-- /container_art161 -->
+
+      <div class="btns">
+        <button id="btn_new" type="button">Nuovo</button>
+
+        <button id="btn_print" type="button">Stampa</button>
+        <button id="btn_pdf" type="button">Esporta PDF</button>
+        <button id="btn_word" type="button">Esporta Word</button>
+        <button id="btn_stampa_tutto" type="button" style="grid-column:span 2">Stampa tutto</button>
+      </div>
+      <div class="saveStatus" id="saveStatus" aria-live="polite">Ultima bozza ripristinata.</div>
+    </div>
+
+    <div class="resizer" id="resizer" title="Trascina per ridimensionare"></div>
+
+    <!-- PANNELLO DI DESTRA (ANTEPRIMA) -->
+    <div class="right">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px">
+        <h2 style="margin:0">Anteprima (editabile)</h2>
+        <div class="small">Trascina la barra centrale per cambiare dimensioni</div>
+      </div>
+      <div class="docTabs" id="docTabs">
+        <button type="button" class="docTab active" data-doc="verbale" id="tab_verbale">Verbale art. 75</button>
+        <button type="button" class="docTab active" data-doc="verbale161" id="tab_verbale161" style="display: none;">Verbale Art. 161</button>
+        <button type="button" class="docTab" data-doc="perquisizione" id="tab_perquisizione" style="display: none;">Perquisizione</button>
+        <button type="button" class="docTab" data-doc="narcotest" id="tab_narcotest" style="display: none;">Narcotest</button>
+        <button type="button" class="docTab" data-doc="etichetta" id="tab_etichetta" style="display: none;">Etichetta</button>
+      </div>
+      <div style="height:10px"></div>
+      <div id="preview" class="preview t" contenteditable="true"></div>
+    </div>
+  </div>
+
+  <div class="mobilePreviewActions" style="display: none;">
+    <button id="btn_print_prev" type="button">Stampa</button>
+    <button id="btn_pdf_prev" type="button">Esporta PDF</button>
+    <button id="btn_word_prev" type="button">Esporta Word</button>
+    <button id="btn_stampa_tutto_prev" type="button" style="grid-column:1/-1">Stampa tutto</button>
+  </div>
+
+  <!-- Registration Service Worker -->
+  <script>
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("./sw.js");
+    }
+  </script>
+
+  <!-- JavaScript Modulari Estratti -->
+  <script src="js/auth.js"></script>
+  <script src="js/generators.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/app.js"></script>
+
+</body>
+</html>
